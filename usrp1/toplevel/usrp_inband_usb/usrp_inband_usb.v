@@ -113,13 +113,28 @@ module usrp_inband_usb
 
    reg [15:0] debug_counter;
    reg [15:0] loopback_i_0,loopback_q_0;
-   
+  
+ 	/////////////////////////////////////////////////////////////////////////
+	// Master timestamp counter
+	reg [31:0] timestamp_counter;
+	
+	always @ (posedge clk64) begin
+		if (tx_dsp_reset | rx_dsp_reset)	//FIXME: does it make sense for rx/tx to reset independently?
+			timestamp_counter <= 32'd0;
+		else 
+			timestamp_counter <= timestamp_counter + 32'd1;
+	end
+
+  
 
    //Connection RX inband <-> TX inband
-   wire rx_WR;
-   wire [15:0] rx_databus;
-   wire rx_WR_done;
-   wire rx_WR_enabled;
+   wire 		rx_WR;
+   wire [15:0] 	rx_databus;
+   wire 		rx_WR_done;
+   wire 		rx_WR_enabled;
+   wire			tx_dropped_packet;
+   wire [3:0]	tx_tag;
+
    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
    // Transmit Side
 `ifdef TX_ON
@@ -132,14 +147,20 @@ wire [1:0] tx_underrun;
 
 `ifdef TX_IN_BAND
  	tx_buffer_inband tx_buffer
-     ( .usbclk(usbclk),.bus_reset(tx_bus_reset),.reset(tx_dsp_reset),
-       .usbdata(usbdata),.WR(WR),.have_space(have_space),
-       .tx_underrun(tx_underrun),.channels({tx_numchan,1'b0}),
+     ( .usbclk(usbclk),
+	   .bus_reset(tx_bus_reset),
+	   .reset(tx_dsp_reset),
+       .usbdata(usbdata),.WR(WR),
+       .have_space(have_space),
+       .timestamp(timestamp_counter),
+       .tx_underrun(tx_underrun),
+       .channels({tx_numchan,1'b0}),
        .tx_i_0(ch0tx),.tx_q_0(ch1tx),
        .tx_i_1(ch2tx),.tx_q_1(ch3tx),
        .tx_i_2(),.tx_q_2(),
        .tx_i_3(),.tx_q_3(),
-       .txclk(clk64),.txstrobe(strobe_interp),
+       .txclk(clk64),
+       .txstrobe(strobe_interp),
        .clear_status(clear_status),
        .tx_empty(tx_empty),
 	   .rx_WR(rx_WR),
@@ -153,7 +174,11 @@ wire [1:0] tx_underrun;
 	   .debugbus(rx_debugbus),
 	   .rssi_0(rssi_0), .rssi_1(rssi_1), .rssi_2(rssi_2), 
        .rssi_3(rssi_3), .threshhold(rssi_threshhold), .rssi_wait(rssi_wait),
-	   .stop(stop), .stop_time(stop_time));
+	   .stop(stop), .stop_time(stop_time),
+
+	   .tx_dropped_packet(tx_dropped_packet),
+	   .tx_tag(tx_tag)
+	  );
 
   `ifdef TX_DUAL
     defparam tx_buffer.NUM_CHAN=2;
@@ -256,12 +281,15 @@ wire [1:0] tx_underrun;
 			       .ddc1_in_i(ddc1_in_i),.ddc1_in_q(ddc1_in_q),
 			       .ddc2_in_i(ddc2_in_i),.ddc2_in_q(ddc2_in_q),
 			       .ddc3_in_i(ddc3_in_i),.ddc3_in_q(ddc3_in_q),.rx_numchan(rx_numchan));
+ 
    `ifdef RX_IN_BAND
-   rx_buffer_inband rx_buffer
+//   rx_buffer_inband #(.NUM_CHAN(`RX_CAP_NCHAN)) rx_buffer
+   rx_buffer_inband #(.NUM_CHAN(1)) rx_buffer
      ( .usbclk(usbclk),.bus_reset(rx_bus_reset),.reset(rx_dsp_reset),
        .reset_regs(rx_dsp_reset),
        .usbdata(usbdata_out),.RD(RD),.have_pkt_rdy(have_pkt_rdy),.rx_overrun(rx_overrun),
        .channels(rx_numchan),
+       .timestamp(timestamp_counter),
        .ch_0(ch0rx),.ch_1(ch1rx),
        .ch_2(ch2rx),.ch_3(ch3rx),
        .ch_4(ch4rx),.ch_5(ch5rx),
@@ -274,11 +302,11 @@ wire [1:0] tx_underrun;
 	   .rx_WR_enabled(rx_WR_enabled),
 	   .debugbus(tx_debugbus),
 	   .rssi_0(rssi_0), .rssi_1(rssi_1), .rssi_2(rssi_2), .rssi_3(rssi_3),
-	   .tx_underrun(tx_underrun));
-    
-    `ifdef RX_DUAL
-      defparam rx_buffer.NUM_CHAN=2;
-    `endif
+	   .tx_underrun(tx_underrun),
+
+	   .tx_dropped_packet(tx_dropped_packet),
+	   .tx_tag(tx_tag)
+	  );
 
    `else
    rx_buffer rx_buffer

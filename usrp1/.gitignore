@@ -1,0 +1,7 @@
+#Quartus backup files
+*.bak
+#Quartus misc
+*.qarlog
+*.smsg
+db/
+

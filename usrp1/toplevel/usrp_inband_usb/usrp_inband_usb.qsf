@@ -27,7 +27,7 @@
 # ========================
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 3.0
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "00:14:04  JULY 13, 2003"
-set_global_assignment -name LAST_QUARTUS_VERSION "7.2 SP2"
+set_global_assignment -name LAST_QUARTUS_VERSION "10.0 SP1"
 
 # Pin & Location Assignments
 # ==========================
@@ -232,9 +232,9 @@ set_global_assignment -name CYCLONE_CONFIGURATION_SCHEME "PASSIVE SERIAL"
 set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
 set_global_assignment -name OPTIMIZE_HOLD_TIMING OFF
 set_global_assignment -name OPTIMIZE_TIMING "NORMAL COMPILATION"
-set_global_assignment -name PHYSICAL_SYNTHESIS_COMBO_LOGIC OFF
-set_global_assignment -name PHYSICAL_SYNTHESIS_REGISTER_DUPLICATION OFF
-set_global_assignment -name PHYSICAL_SYNTHESIS_REGISTER_RETIMING OFF
+set_global_assignment -name PHYSICAL_SYNTHESIS_COMBO_LOGIC ON
+set_global_assignment -name PHYSICAL_SYNTHESIS_REGISTER_DUPLICATION ON
+set_global_assignment -name PHYSICAL_SYNTHESIS_REGISTER_RETIMING ON
 set_global_assignment -name IO_PLACEMENT_OPTIMIZATION OFF
 set_global_assignment -name PHYSICAL_SYNTHESIS_EFFORT NORMAL
 set_global_assignment -name INC_PLC_MODE OFF
@@ -259,13 +259,12 @@ set_global_assignment -name EDA_RESYNTHESIS_TOOL "<NONE>"
 # =====================
 set_global_assignment -name USE_CONFIGURATION_DEVICE OFF
 set_global_assignment -name GENERATE_RBF_FILE ON
-set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS OUTPUT DRIVING AN UNSPECIFIED SIGNAL"
 set_global_assignment -name AUTO_RESTART_CONFIGURATION OFF
 
 # Simulator Assignments
 # =====================
 set_global_assignment -name START_TIME "0 ns"
-set_global_assignment -name GLITCH_INTERVAL "1 ns"
 
 # Design Assistant Assignments
 # ============================
@@ -278,7 +277,6 @@ set_global_assignment -name NONSYNCHSTRUCT_RULE_ASYN_RAM OFF
 set_global_assignment -name CLK_CAT OFF
 set_global_assignment -name CLK_RULE_COMB_CLOCK OFF
 set_global_assignment -name CLK_RULE_INV_CLOCK OFF
-set_global_assignment -name CLK_RULE_GATING_SCHEME OFF
 set_global_assignment -name CLK_RULE_INPINS_CLKNET OFF
 set_global_assignment -name CLK_RULE_CLKNET_CLKSPINES OFF
 set_global_assignment -name CLK_RULE_MIX_EDGES OFF
@@ -327,7 +325,6 @@ set_global_assignment -name LOGICLOCK_INCREMENTAL_COMPILE_ASSIGNMENT OFF
 	# ==================
 set_global_assignment -name DUTY_CYCLE 50 -section_id SCLK
 set_global_assignment -name FMAX_REQUIREMENT "1 MHz" -section_id SCLK
-set_global_assignment -name INCLUDE_EXTERNAL_PIN_DELAYS_IN_FMAX_CALCULATIONS OFF -section_id SCLK
 
 # end CLOCK(SCLK)
 # ---------------
@@ -339,7 +336,6 @@ set_global_assignment -name INCLUDE_EXTERNAL_PIN_DELAYS_IN_FMAX_CALCULATIONS OFF
 	# ==================
 set_global_assignment -name DUTY_CYCLE 50 -section_id master_clk
 set_global_assignment -name FMAX_REQUIREMENT "64 MHz" -section_id master_clk
-set_global_assignment -name INCLUDE_EXTERNAL_PIN_DELAYS_IN_FMAX_CALCULATIONS OFF -section_id master_clk
 
 # end CLOCK(master_clk)
 # ---------------------
@@ -351,7 +347,6 @@ set_global_assignment -name INCLUDE_EXTERNAL_PIN_DELAYS_IN_FMAX_CALCULATIONS OFF
 	# ==================
 set_global_assignment -name DUTY_CYCLE 50 -section_id usbclk
 set_global_assignment -name FMAX_REQUIREMENT "48 MHz" -section_id usbclk
-set_global_assignment -name INCLUDE_EXTERNAL_PIN_DELAYS_IN_FMAX_CALCULATIONS OFF -section_id usbclk
 
 # end CLOCK(usbclk)
 # -----------------
@@ -369,9 +364,22 @@ set_instance_assignment -name CLOCK_SETTINGS master_clk -to master_clk
 # --------------------
 
 
-set_instance_assignment -name PARTITION_HIERARCHY no_file_for_top_partition -to | -section_id Top
 set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
 set_global_assignment -name FITTER_AUTO_EFFORT_DESIRED_SLACK_MARGIN "100 ps"
+set_global_assignment -name LL_ROOT_REGION ON -section_id "Root Region"
+set_global_assignment -name LL_MEMBER_STATE LOCKED -section_id "Root Region"
+set_global_assignment -name PARTITION_COLOR 14622752 -section_id Top
+set_global_assignment -name RTLV_GROUP_COMB_LOGIC_IN_CLOUD OFF
+
+set_global_assignment -name NUMBER_OF_SOURCES_PER_DESTINATION_TO_REPORT 20
+set_global_assignment -name NUMBER_OF_PATHS_TO_REPORT 400
+set_global_assignment -name NUMBER_OF_DESTINATION_TO_REPORT 20
+set_global_assignment -name FMAX_REQUIREMENT "64 MHz"
+set_global_assignment -name VERILOG_FILE ../../inband_lib/inband_packet_defs.v
+set_global_assignment -name VERILOG_FILE ../../inband_lib/rx_packetizer_a.v
+set_global_assignment -name VERILOG_FILE ../../inband_lib/rx_channel_selector.v
+set_global_assignment -name VERILOG_FILE ../../megacells/dcfifo_generic.v
+set_global_assignment -name VERILOG_FILE ../../inband_lib/rx_channel_buffer.v
 set_global_assignment -name VERILOG_FILE ../../megacells/fifo_4kx16_dc.v
 set_global_assignment -name VERILOG_FILE ../../megacells/fifo_1kx16.v
 set_global_assignment -name VERILOG_FILE ../../inband_lib/channel_demux.v
@@ -419,5 +427,11 @@ set_global_assignment -name VERILOG_FILE ../../sdr_lib/strobe_gen.v
 set_global_assignment -name VERILOG_FILE ../../sdr_lib/sign_extend.v
 set_global_assignment -name VERILOG_FILE ../../inband_lib/channel_ram.v
 set_global_assignment -name VERILOG_FILE ../../inband_lib/register_io.v
-set_global_assignment -name LL_ROOT_REGION ON -section_id "Root Region"
-set_global_assignment -name LL_MEMBER_STATE LOCKED -section_id "Root Region"
+set_global_assignment -name PHYSICAL_SYNTHESIS_ASYNCHRONOUS_SIGNAL_PIPELINING ON
+set_global_assignment -name PHYSICAL_SYNTHESIS_COMBO_LOGIC_FOR_AREA ON
+set_global_assignment -name PHYSICAL_SYNTHESIS_MAP_LOGIC_TO_MEMORY_FOR_AREA ON
+set_global_assignment -name VERILOG_FILE ../../inband_lib/time_comparator.v
+set_global_assignment -name VERILOG_INPUT_VERSION VERILOG_2001
+set_global_assignment -name VERILOG_SHOW_LMF_MAPPING_MESSAGES OFF
+set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
+set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

@@ -2,6 +2,8 @@ module tx_buffer_inband
   ( //System
     input wire usbclk, input wire bus_reset, input wire reset, 
     input wire [15:0] usbdata, output wire have_space, input wire [3:0] channels, 
+    input wire [31:0]	timestamp,
+    
     //output transmit signals
     output wire [15:0] tx_i_0, output wire [15:0] tx_q_0, 
     output wire [15:0] tx_i_1, output wire [15:0] tx_q_1,
@@ -9,26 +11,34 @@ module tx_buffer_inband
     output wire [15:0] tx_i_3, output wire [15:0] tx_q_3, 
     input wire txclk, input wire txstrobe, input wire WR,
     input wire clear_status, output wire tx_empty, output wire [15:0] debugbus, 
+    
     //command reader io
-    output wire [15:0] rx_databus, output wire rx_WR, output wire rx_WR_done, 
-    input wire rx_WR_enabled,
+    input wire			rx_WR_enabled,
+    output wire [15:0]	rx_databus, 
+    output wire 		rx_WR, 
+    output wire 		rx_WR_done, 
+    output wire 		tx_dropped_packet,
+    output wire [3:0]	tx_tag,
+
     //register io 
     output wire [1:0] reg_io_enable, output wire [31:0] reg_data_in, output wire [6:0] reg_addr,
     input wire [31:0] reg_data_out,  
+    
     //input characteristic signals
     input wire [31:0] rssi_0, input wire [31:0] rssi_1, input wire [31:0] rssi_2, 
     input wire [31:0] rssi_3, input wire [31:0] rssi_wait, input wire [31:0] threshhold, 
     output wire [1:0] tx_underrun, 
+    
     //system stop
-    output wire stop, output wire [15:0] stop_time);
+    output wire stop, output wire [15:0] stop_time
+   );
 	
    parameter NUM_CHAN	 =      1 ;
     
    /* To generate channel readers */
    genvar i ;
     
-   /* These will eventually be external register */
-   reg                  [31:0] timestamp_clock ;
+   /* These will eventually be external registers */
    wire                 [7:0]  txstrobe_rate [NUM_CHAN-1:0] ;
    wire			        [31:0] rssi [3:0];
    assign rssi[0] = rssi_0;
@@ -36,13 +46,6 @@ module tx_buffer_inband
    assign rssi[2] = rssi_2;
    assign rssi[3] = rssi_3;
    
-   always @(posedge txclk)
-       if (reset)
-           timestamp_clock <= 0;
-       else
-           timestamp_clock <= timestamp_clock + 1;
-
-
     /* Connections between tx_usb_fifo_reader and
        cnannel/command processing blocks */
    wire                  [31:0] tx_data_bus ;
@@ -115,7 +118,7 @@ module tx_buffer_inband
 
        chan_fifo_reader tx_chan_reader 
        (.reset(reset), .tx_clock(txclk), .tx_strobe(txstrobe),
-        .timestamp_clock(timestamp_clock), .samples_format(4'b0),          
+        .timestamp_clock(timestamp), .samples_format(4'b0),          
         .tx_q(tx_q[i]), .tx_i(tx_i[i]), .underrun(chan_underrun[i]),
         .skip(chan_skip[i]), .rdreq(chan_rdreq[i]),
         .fifodata(chan_fifodata[i]), .pkt_waiting(chan_pkt_waiting[i]),
@@ -132,12 +135,16 @@ module tx_buffer_inband
     .RD(chan_rdreq[NUM_CHAN]), .RD_done(chan_skip[NUM_CHAN]));
 
    cmd_reader tx_cmd_reader
-   (.reset(reset), .txclk(txclk), .timestamp_clock(timestamp_clock), .skip(chan_skip[NUM_CHAN]),
+   (.reset(reset), .txclk(txclk), .timestamp_clock(timestamp), .skip(chan_skip[NUM_CHAN]),
     .rdreq(chan_rdreq[NUM_CHAN]), .fifodata(chan_fifodata[NUM_CHAN]),
     .pkt_waiting(chan_pkt_waiting[NUM_CHAN]), .rx_databus(rx_databus),
     .rx_WR(rx_WR), .rx_WR_done(rx_WR_done), .rx_WR_enabled(rx_WR_enabled),
     .reg_data_in(reg_data_in), .reg_data_out(reg_data_out), .reg_addr(reg_addr),
-    .reg_io_enable(reg_io_enable), .debug(debug[NUM_CHAN]), .stop(stop), .stop_time(stop_time));
+    .reg_io_enable(reg_io_enable), .debug(debug[NUM_CHAN]), .stop(stop), .stop_time(stop_time),
+    
+    .tx_dropped_packet(tx_dropped_packet),
+    .tx_tag(tx_tag)
+    );
 				   
 endmodule // tx_buffer
 

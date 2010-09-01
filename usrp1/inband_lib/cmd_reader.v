@@ -1,22 +1,39 @@
 module cmd_reader
-   (//System
-    input reset, input txclk, input [31:0] timestamp_clock,
+   (
+    //System
+    input 				reset, 
+    input 				txclk, 
+    input [31:0] 		timestamp_clock,
+    
     //FX2 Side
-    output reg skip, output reg rdreq, 
-    input [31:0] fifodata, input pkt_waiting,
+    output reg 			skip, 
+    output reg 			rdreq, 
+    input [31:0] 		fifodata, 
+    input 				pkt_waiting,
+    
     //Rx side
-    input rx_WR_enabled, output reg [15:0] rx_databus,
-    output reg rx_WR, output reg rx_WR_done,
+    input 				rx_WR_enabled, 
+    output reg [15:0] 	rx_databus,
+    output reg 			rx_WR, 
+    output reg 			rx_WR_done,
+    output reg			tx_dropped_packet,
+    output reg [3:0]	tx_tag,
+    
     //register io
-    input wire [31:0] reg_data_out, output reg [31:0] reg_data_in,
-    output reg [6:0] reg_addr, output reg [1:0] reg_io_enable,
-    output wire [14:0] debug, output reg stop, output reg [15:0] stop_time);
+    input wire [31:0] 	reg_data_out, 
+    output reg [31:0] 	reg_data_in,
+    output reg [6:0] 	reg_addr, 
+    output reg [1:0] 	reg_io_enable,
+    output wire [14:0]	debug, 
+    output reg			stop, 
+    output reg [15:0] 	stop_time
+    );
 	
    // States
    parameter IDLE                       =   4'd0;
    parameter HEADER                     =   4'd1;
    parameter TIMESTAMP                  =   4'd2;
-   parameter WAIT          	        =   4'd3;
+   parameter WAIT          	    	    =   4'd3;
    parameter TEST                       =   4'd4;
    parameter SEND                       =   4'd5;
    parameter PING                       =   4'd6;
@@ -33,7 +50,16 @@ module cmd_reader
    `define OP_READ_REG_REPLY                8'd5
    `define OP_DELAY                         8'd12
 	
-   reg [6:0]   payload;
+
+   `define JITTER                           5
+   `define OP_CODE                          31:24
+   `define PAYLOAD                          8:2
+
+   reg [15:0]   header_val;
+   wire [6:0] 	payload;
+   
+   assign payload = header_val[`PAYLOAD];	//7 MSB of length
+
    reg [6:0]   payload_read;
    reg [3:0]   state;
    reg [15:0]  high;
@@ -45,15 +71,33 @@ module cmd_reader
    reg [1:0]   lines_in;
    reg [1:0]   lines_out;
    reg [1:0]   lines_out_total;
+
+   reg [31:0]  time_delta;	//for packet time calculations
+   
+	wire time_match;
+	wire time_valid;
 	
-   `define JITTER                           5
-   `define OP_CODE                          31:24
-   `define PAYLOAD                          8:2
+	time_comparator	time_check (
+		.clock(timestamp_clock),
+		.timestamp(value0),
+		.match(time_match),
+		.valid(time_valid)
+	);
 	
    wire [7:0] ops;
    assign ops = value0[`OP_CODE];
    assign debug = {state[3:0], lines_out[1:0], pending, rx_WR, rx_WR_enabled, value0[2:0], ops[2:0]};
-	
+
+	//dropped_packet flag logic
+	always @(posedge txclk)
+	begin
+		if (!reset && state == WAIT && !time_valid) 
+			tx_dropped_packet <= 1;
+		else 
+			tx_dropped_packet <= 0;
+	end
+   
+   //General state machine logic   
    always @(posedge txclk)
        if (reset)
          begin
@@ -82,7 +126,7 @@ module cmd_reader
           
           HEADER : 
             begin
-              payload <= fifodata[`PAYLOAD];
+              header_val <= fifodata;
               state <= TIMESTAMP;
             end
           
@@ -95,22 +139,17 @@ module cmd_reader
 			
           WAIT : 
             begin
-              // Let's send it
-              if ((value0 <= timestamp_clock + `JITTER 
-                 && value0 > timestamp_clock)
-                 || value0 == 32'hFFFFFFFF)
-                  state <= TEST;
-              // Wait a little bit more
-              else if (value0 > timestamp_clock + `JITTER)
-                  state <= WAIT; 
-              // Outdated
-              else if (value0 < timestamp_clock)
-                begin
-                  state <= IDLE;
-                  skip <= 1;
-                end
-            end
-			
+				if (time_match || (value0 == 32'hffffffff)) begin
+					state <= TEST;
+					tx_tag <= header_val[`TAG];  //Echo tag field to rx buffer as feedback of command execution
+				end
+				else if (!time_valid) begin
+					state <= IDLE;
+					skip <= 1;
+				end
+				else
+					state <= WAIT; 
+			end	
           TEST : 
             begin
               reg_io_enable <= 0;

@@ -1,0 +1,9 @@
+*.rpt
+*.summary
+*.done
+*.pin
+*.pof
+*.qpf
+*.qsf
+*.qws
+*.sof
